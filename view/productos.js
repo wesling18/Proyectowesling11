@@ -1,136 +1,142 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Alert } from "react-native"; // Importar Alert para las validaciones
+import { View, StyleSheet, TouchableOpacity, Text, Alert, ScrollView, SafeAreaView } from "react-native";
 import { db } from "../src/database/firebaseconfig.js";
-// Asegúrate de importar addDoc y updateDoc
-import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore"; // 
-import ListaProductos from "../componentes/ListaProductos.js"; 
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+
 import FormularioProductos from "../componentes/FormularioProductos.js";
-import * as Constants from "expo-constants";
 import TablaProductos from "../componentes/TablaProductos.js";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const Productos = () => {
-  const [Productos, setProductos] = useState([]);
-  
-  // 1. Cree la variable de estado para el nuevo producto [cite: 11]
-  const [nuevoProducto, setNuevoProducto] = useState({
-    nombre: "",
-    precio: "",
-  });
-
-  // 2. Cree variables de estado para el modo de edición [cite: 18]
+// El componente Productos debe recibir cerrarSesion por parámetro
+const Productos = ({ cerrarSesion }) => { // Recibe cerrarSesion [cite: 46]
+  const [productos, setProductos] = useState([]);
+  const [nuevoProducto, setNuevoProducto] = useState({ nombre: "", precio: "" });
   const [modoEdicion, setModoEdicion] = useState(false);
   const [productoId, setProductoId] = useState(null);
 
-  // 3. Cree el método para el manejo de cambio de estado de valor [cite: 12]
-  const manejoCambio = (nombre, valor) => {
-    setNuevoProducto((prev) => ({
-      ...prev,
-      [nombre]: valor,
-    }));
-  };
-
-  // 4. Cree el método para guardar un producto [cite: 13]
-  const guardarProducto = async () => {
-    try {
-      if (nuevoProducto.nombre && nuevoProducto.precio) {
-        await addDoc(collection(db, "productos"), {
-          nombre: nuevoProducto.nombre,
-          precio: parseFloat(nuevoProducto.precio),
-        });
-
-        cargarDatos(); // Recargar lista
-        setNuevoProducto({ nombre: "", precio: "" }); // Resetea el objeto
-      } else {
-        Alert.alert("Por favor, complete todos los campos.");
-      }
-    } catch (error) {
-      console.error("Error al registrar producto:", error);
-    }
-  };
-
-  // 5. Codifique el método para actualizar el producto [cite: 19]
-  const actualizarProducto = async () => {
-    try {
-      if (nuevoProducto.nombre && nuevoProducto.precio) {
-        await updateDoc(doc(db, "productos", productoId), {
-          nombre: nuevoProducto.nombre,
-          precio: parseFloat(nuevoProducto.precio),
-        });
-
-        setNuevoProducto({ nombre: "", precio: "" });
-        setModoEdicion(false); // Volver al modo registro
-        setProductoId(null);
-        
-        cargarDatos(); // Recargar lista
-      } else {
-        Alert.alert("Por favor, complete todos los campos.");
-      }
-    } catch (error) {
-      console.error("Error al actualizar producto:", error);
-    }
-  };
-  
-  // 6. Codifique el método editarProducto [cite: 20]
-  const editarProducto = (producto) => {
-    setNuevoProducto({
-      nombre: producto.nombre,
-      precio: producto.precio.toString(), // Convierte a string para el TextInput
-    });
-    setProductoId(producto.id);
-    setModoEdicion(true); // Cambia a modo edición
-  };
-
-  const cargarDatos = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "productos"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setProductos(data);
-    } catch (error) {
-      console.error("Error al obtener documentos:", error);
-    }
-  };
-
-  const eliminarProducto = async (id) => {
-    try {
-      await deleteDoc(doc(db, "productos", id));
-      cargarDatos(); // recargar lista
-    } catch (error) {
-      console.error("Error al eliminar:", error);
-    }
-  };
-
+  // Cargar productos desde Firestore al iniciar
   useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "productos"));
+        const productosData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setProductos(productosData);
+      } catch (error) {
+        console.error("Error al cargar productos: ", error);
+        Alert.alert("Error", "No se pudieron cargar los productos.");
+      }
+    };
     cargarDatos();
   }, []);
 
+  // Maneja cambios en los inputs del formulario
+  const manejoCambio = (name, value) => {
+    setNuevoProducto({ ...nuevoProducto, [name]: value });
+  };
+
+  // Guarda un nuevo producto
+  const guardarProducto = async () => {
+    if (!nuevoProducto.nombre || !nuevoProducto.precio) {
+      Alert.alert("Error", "Por favor, completa todos los campos.");
+      return;
+    }
+    try {
+      const docRef = await addDoc(collection(db, "productos"), nuevoProducto);
+      setProductos([...productos, { id: docRef.id, ...nuevoProducto }]);
+      setNuevoProducto({ nombre: "", precio: "" }); // Limpiar formulario
+    } catch (error) {
+      console.error("Error al guardar producto: ", error);
+    }
+  };
+
+  // Elimina un producto
+  const eliminarProducto = async (id) => {
+    try {
+      await deleteDoc(doc(db, "productos", id));
+      setProductos(productos.filter((p) => p.id !== id));
+    } catch (error) {
+      console.error("Error al eliminar producto: ", error);
+    }
+  };
+
+  // Prepara el formulario para editar un producto
+  const editarProducto = (producto) => {
+    setModoEdicion(true);
+    setProductoId(producto.id);
+    setNuevoProducto({ nombre: producto.nombre, precio: producto.precio });
+  };
+
+  // Actualiza un producto existente
+  const actualizarProducto = async () => {
+    if (!nuevoProducto.nombre || !nuevoProducto.precio) {
+      Alert.alert("Error", "Por favor, completa todos los campos.");
+      return;
+    }
+    try {
+      const productoDoc = doc(db, "productos", productoId);
+      await updateDoc(productoDoc, nuevoProducto);
+      setProductos(
+        productos.map((p) => (p.id === productoId ? { id: productoId, ...nuevoProducto } : p))
+      );
+      setModoEdicion(false);
+      setProductoId(null);
+      setNuevoProducto({ nombre: "", precio: "" });
+    } catch (error) {
+      console.error("Error al actualizar producto: ", error);
+    }
+  };
+
   return (
-    <View style={styles.containers}>
-      {/* Asegúrate de pasar las tres nuevas propiedades y las de edición al FormularioProductos [cite: 14, 22] */}
-      <FormularioProductos 
-        nuevoProducto={nuevoProducto}
-        manejoCambio={manejoCambio}
-        guardarProducto={guardarProducto}
-        actualizarProducto={actualizarProducto} // Propiedad de actualización
-        modoEdicion={modoEdicion} // Propiedad del modo de edición
-      />
-      
-      <ListaProductos productos={Productos} eliminarProducto={eliminarProducto} />
-      
-      {/* También debe pasarle el método editarProducto al componente TablaProductos [cite: 22] */}
-      <TablaProductos 
-        productos={Productos} 
-        eliminarProducto={eliminarProducto} 
-        editarProducto={editarProducto} // Propiedad para iniciar la edición
-      />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Gestión de Productos</Text>
+          <TouchableOpacity style={styles.botonCerrarSesion} onPress={cerrarSesion}>
+            <MaterialCommunityIcons name="logout" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+        <FormularioProductos
+          nuevoProducto={nuevoProducto}
+          manejoCambio={manejoCambio}
+          guardarProducto={guardarProducto}
+          actualizarProducto={actualizarProducto}
+          modoEdicion={modoEdicion}
+        />
+        <TablaProductos productos={productos} eliminarProducto={eliminarProducto} editarProducto={editarProducto} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  containers: { flex: 1, padding: 20 },
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f4f6f9",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  botonCerrarSesion: {
+    backgroundColor: "#3b5998", // Mismo color que el login para consistencia
+    padding: 8,
+    borderRadius: 8,
+    elevation: 3,
+  },
 });
 
 export default Productos;

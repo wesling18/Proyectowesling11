@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native"; // ¡Importa TouchableOpacity!
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import BotonEliminarProducto from "./BotonEliminarProducto.js";
+import { Feather } from '@expo/vector-icons';
 
 // Asegúrate de recibir editarProducto
 const TablaProductos = ({ productos, eliminarProducto, editarProducto }) => { 
@@ -23,7 +24,7 @@ const TablaProductos = ({ productos, eliminarProducto, editarProducto }) => {
                 style={styles.botonActualizar} // Nuevo estilo
                 onPress={() => editarProducto(item)} // Llama a editarProducto con el ítem completo
               >
-                <Text>✏️</Text>
+                <Feather name="edit-2" size={18} color="white" />
               </TouchableOpacity>
 
               <BotonEliminarProducto
@@ -40,46 +41,56 @@ const TablaProductos = ({ productos, eliminarProducto, editarProducto }) => {
 
 const styles = StyleSheet.create({
   containers: {
-    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 10,
     padding: 20,
-    alignSelf: "stretch",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  titulo: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
+  titulo: { fontSize: 20, fontWeight: "bold", marginBottom: 15, color: "#333" },
   fila: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderColor: "#ccc",
-    paddingVertical: 6,
+    borderColor: "#eee",
+    paddingVertical: 12,
     alignItems: "center",
   },
   encabezado: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#f8f9fa",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    paddingVertical: 15,
   },
   celda: {
     flex: 1,
     fontSize: 16,
     textAlign: "center",
+    color: "#555",
   },
   celdaAcciones: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: 15,
   },
   textoEncabezado: {
     fontWeight: "bold",
-    fontSize: 17,
+    fontSize: 16,
     textAlign: "center",
+    color: "#333",
   },
   // Agregue las siguientes sentencias en los estilos del componente TablaProductos
   botonActualizar: {
-    padding: 4,
+    padding: 8,
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
-    backgroundColor: "#f3f3f7"
+    backgroundColor: "#28a745", // Un verde para editar
   }
 });
 

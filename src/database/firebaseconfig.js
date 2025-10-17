@@ -1,5 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+// 1. Importar getAuth de firebase/auth
+import { getAuth } from "firebase/auth"; 
 import Constants from "expo-constants";
 
 const firebaseConfig = {
@@ -12,5 +14,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+// 2. Inicializar el objeto de autenticación
+const auth = getAuth(app); 
 
-export { db };
+// 3. Exportar db Y auth
+export { db, auth };

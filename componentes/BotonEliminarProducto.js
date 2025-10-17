@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
+import { Feather } from '@expo/vector-icons';
 
 const BotonEliminarProducto = ({ id, eliminarProducto }) => {
   const [visible, setVisible] = useState(false);
@@ -12,7 +13,7 @@ const BotonEliminarProducto = ({ id, eliminarProducto }) => {
   return (
     <View>
       <TouchableOpacity style={styles.boton} onPress={() => setVisible(true)}>
-        <Text style={styles.textoBoton}>🗑️</Text>
+        <Feather name="trash-2" size={18} color="white" />
       </TouchableOpacity>
       <Modal
         visible={visible}
@@ -46,14 +47,13 @@ const BotonEliminarProducto = ({ id, eliminarProducto }) => {
 
 const styles = StyleSheet.create({
   boton: {
-    padding: 4,
+    padding: 8,
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
-    backgroundColor: "#f3f3f7ff",
+    backgroundColor: "#dc3545",
   },
-  textoBoton: { color: "white", fontSize: 14 },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
