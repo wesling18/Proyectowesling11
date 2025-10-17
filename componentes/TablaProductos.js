@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native"; // ¡Importa TouchableOpacity!
 import BotonEliminarProducto from "./BotonEliminarProducto.js";
 
-const TablaProductos = ({ productos, eliminarProducto }) => {
+// Asegúrate de recibir editarProducto
+const TablaProductos = ({ productos, eliminarProducto, editarProducto }) => { 
   return (
     <View style={styles.containers}>
       <Text style={styles.titulo}>Tabla de productos</Text>
@@ -17,6 +18,14 @@ const TablaProductos = ({ productos, eliminarProducto }) => {
             <Text style={styles.celda}>{item.nombre}</Text>
             <Text style={styles.celda}>${item.precio}</Text>
             <View style={styles.celdaAcciones}>
+              {/* Codifique el botón de edición (Actualizar) */}
+              <TouchableOpacity
+                style={styles.botonActualizar} // Nuevo estilo
+                onPress={() => editarProducto(item)} // Llama a editarProducto con el ítem completo
+              >
+                <Text>✏️</Text>
+              </TouchableOpacity>
+
               <BotonEliminarProducto
                 id={item.id}
                 eliminarProducto={eliminarProducto}
@@ -63,6 +72,15 @@ const styles = StyleSheet.create({
     fontSize: 17,
     textAlign: "center",
   },
+  // Agregue las siguientes sentencias en los estilos del componente TablaProductos
+  botonActualizar: {
+    padding: 4,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    backgroundColor: "#f3f3f7"
+  }
 });
 
 export default TablaProductos;

@@ -1,47 +1,46 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, TextInput, Button, StyleSheet, Text } from "react-native";
-import { db } from "../src/database/firebaseconfig.js";
-import { collection, addDoc } from "firebase/firestore";
+// Eliminadas: importaciones de firebaseconfig, collection, addDoc
 
-const FormularioProductos = ({ cargarDatos }) => {
-  const [nombre, setNombre] = useState("");
-  const [precio, setPrecio] = useState("");
-
-  const guardarProducto = async () => {
-    if (nombre && precio) {
-      try {
-        await addDoc(collection(db, "productos"), {
-          nombre: nombre,
-          precio: parseFloat(precio),
-        });
-        setNombre("");
-        setPrecio("");
-        cargarDatos(); // Volver a cargar la lista
-      } catch (error) {
-        console.log("Error al registrar producto:", error);
-      }
-    } else {
-      alert("Por favor, complete todos los datos");
-    }
-  };
-
+// Asegurarse que el componente reciba estos 5 parámetros [cite: 7, 23]
+const FormularioProductos = ({ 
+  nuevoProducto, 
+  manejoCambio, 
+  guardarProducto, 
+  actualizarProducto, 
+  modoEdicion 
+}) => {
+  // Eliminadas: variables de estado y método GuardarProducto [cite: 6]
+  
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Registro de Productos</Text>
+      {/* Modificación del título del formulario con validación según modoEdicion [cite: 24] */}
+      <Text style={styles.titulo}>
+        {modoEdicion ? "Actualizar Producto" : "Registro de Producto"}
+      </Text>
+      
+      {/* Modificación de TextInput para Nombre: emplea nuevoProducto y manejoCambio [cite: 8, 9] */}
       <TextInput
         style={styles.input}
         placeholder="Nombre del producto"
-        value={nombre}
-        onChangeText={setNombre}
+        value={nuevoProducto.nombre}
+        onChangeText={(nombre) => manejoCambio("nombre", nombre)}
       />
+      
+      {/* Modificación de TextInput para Precio: emplea nuevoProducto y manejoCambio [cite: 8, 9] */}
       <TextInput
         style={styles.input}
         placeholder="Precio"
-        value={precio}
-        onChangeText={setPrecio}
+        value={nuevoProducto.precio}
+        onChangeText={(precio) => manejoCambio("precio", precio)}
         keyboardType="numeric"
       />
-      <Button title="Guardar" onPress={guardarProducto} />
+      
+      {/* Actualización del texto del botón y método según modoEdicion [cite: 25] */}
+      <Button 
+        title={modoEdicion ? "Actualizar" : "Guardar"}
+        onPress={modoEdicion ? actualizarProducto : guardarProducto} 
+      />
     </View>
   );
 };
