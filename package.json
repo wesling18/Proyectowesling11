@@ -9,18 +9,36 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "base-64": "^1.0.0",
     "dotenv": "^17.2.2",
+    "exceljs": "^4.4.0",
     "expo": "~54.0.6",
+    "expo-clipboard": "^8.0.7",
     "expo-constants": "^18.0.8",
+    "expo-file-system": "^19.0.17",
+    "expo-linear-gradient": "~15.0.7",
+    "expo-sharing": "^14.0.7",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.4.0",
     "react": "19.1.0",
     "react-native": "0.81.4",
     "react-native-get-random-values": "^1.11.0",
-    "react-native-url-polyfill": "^2.0.0",
-    "expo-linear-gradient": "~15.0.7",
-    "@expo/vector-icons": "^15.0.2"
+    "react-native-url-polyfill": "^2.0.0"
   },
-  "private": true
+  "private": true,
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wesling18/Proyectowesling11.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/wesling18/Proyectowesling11/issues"
+  },
+  "homepage": "https://github.com/wesling18/Proyectowesling11#readme"
 }

@@ -1,31 +1,166 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Button, Alert } from "react-native";
 import { db } from "../src/database/firebaseconfig.js";
-import { collection, getDocs, doc, deleteDoc, addDoc, updateDoc, query, where, orderBy, limit } from 'firebase/firestore';
+import {
+  collection, getDocs, doc, deleteDoc, addDoc, updateDoc,
+  query, where, orderBy, limit
+} from "firebase/firestore";
 import FormularioProductos from "../componentes/FormularioProductos";
 import TablaProductos from "../componentes/TablaProductos.js";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
+import { encode as btoa } from "base-64"; 
+
+const colecciones = ["productos", "usuarios", "edades", "ciudades"];
+
+// Cargar datos de una colección
+const cargarDatosFirebase = async (nombreColeccion) => {
+  try {
+    const snapshot = await getDocs(collection(db, nombreColeccion));
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error(`Error cargando datos de ${nombreColeccion}:`, error);
+    return [];
+  }
+};
+
+// Cargar todas las colecciones
+const cargarTodasColecciones = async () => {
+  const datosTotales = {};
+  for (const nombre of colecciones) {
+    datosTotales[nombre] = await cargarDatosFirebase(nombre);
+  }
+  return datosTotales;
+};
+
+// Exportar una colección individual 
+const exportarColeccionIndividual = async (nombreColeccion) => {
+  try {
+    const datos = await cargarDatosFirebase(nombreColeccion);
+    const jsonString = JSON.stringify({ [nombreColeccion]: datos }, null, 2);
+    const fileUri = FileSystem.cacheDirectory + `${nombreColeccion}.txt`;
+
+    await Clipboard.setStringAsync(jsonString);
+    await FileSystem.writeAsStringAsync(fileUri, jsonString);
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "text/plain",
+        dialogTitle: `Exportar ${nombreColeccion} de Firebase`,
+      });
+    }
+    Alert.alert("Éxito", `Datos de ${nombreColeccion} exportados correctamente.`);
+  } catch (error) {
+    console.error(`Error al exportar ${nombreColeccion}:`, error);
+    Alert.alert("Error", `No se pudo exportar la colección de ${nombreColeccion}.`);
+  }
+};
+
+// Exportar todas las colecciones (TXT)
+const exportarTodasColecciones = async () => {
+  try {
+    const datos = await cargarTodasColecciones();
+    const jsonString = JSON.stringify(datos, null, 2);
+    const fileUri = FileSystem.cacheDirectory + "todas_las_colecciones.txt";
+
+    await Clipboard.setStringAsync(jsonString);
+    await FileSystem.writeAsStringAsync(fileUri, jsonString);
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "text/plain",
+        dialogTitle: "Exportar todas las colecciones",
+      });
+    }
+    Alert.alert("Éxito", "Todas las colecciones fueron exportadas correctamente.");
+  } catch (error) {
+    console.error("Error al exportar todas las colecciones:", error);
+    Alert.alert("Error", "No se pudieron exportar todas las colecciones.");
+  }
+};
+
+// --- CÓDIGO DE LA GUÍA (GENERAR EXCEL) ---
+
+// Función de ayuda para convertir ArrayBuffer a base64
+const arrayBufferToBase64 = (buffer) => {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+// --- ¡NUEVA FUNCIÓN PARA PRODUCTOS! ---
+const generarExcelProductos = async (productos) => {
+  try {
+    if (!productos || productos.length === 0) {
+      throw new Error("No hay productos en la lista para exportar.");
+    }
+    console.log("Productos para Excel:", productos);
+
+    const response = await fetch(
+      "https://2sonisoe31.execute-api.us-east-2.amazonaws.com/generarexcel",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ datos: productos }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    const fileUri = FileSystem.documentDirectory + "reporte_productos.xlsx";
+
+    await FileSystem.writeAsStringAsync(fileUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, {
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        dialogTitle: "Descargar Reporte de Productos",
+      });
+    } else {
+      alert("Compartir no disponible.");
+    }
+
+    Alert.alert("Éxito", "Excel de productos generado y listo para descargar.");
+  } catch (error) {
+    console.error("Error generando Excel de Productos:", error);
+    Alert.alert("Error", "Error: " + error.message);
+  }
+};
+
+// --- TU COMPONENTE PRINCIPAL ---
 
 const Productos = () => {
-  console.log('Renderizando componente Productos');
   const [productos, setProductos] = useState([]);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [productoId, setProductoId] = useState(null);
   const [nuevoProducto, setNuevoProducto] = useState({
     nombre: "",
     precio: "",
-    });
+  });
 
   const cargarDatos = async () => {
     try {
-      console.log('Entrando a cargarDatos');
-    
-      const querySnapshot = await getDocs(collection(db, "productos")); 
+      const querySnapshot = await getDocs(collection(db, "productos"));
       const data = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       setProductos(data);
-      console.log("Productos traídos:", data);
     } catch (error) {
       console.error("Error al obtener documentos: ", error);
     }
@@ -33,9 +168,8 @@ const Productos = () => {
 
   const eliminarProducto = async (id) => {
     try {
-
       await deleteDoc(doc(db, "productos", id));
-      cargarDatos(); // recarga lista 
+      cargarDatos();
     } catch (error) {
       console.error("Error al eliminar:", error);
     }
@@ -51,15 +185,14 @@ const Productos = () => {
   const guardarProducto = async () => {
     try {
       if (nuevoProducto.nombre && nuevoProducto.precio) {
-        
         await addDoc(collection(db, "productos"), {
           nombre: nuevoProducto.nombre,
           precio: parseFloat(nuevoProducto.precio),
         });
-        cargarDatos(); //Recarga lista
-        setNuevoProducto({nombre: "", precio: ""});
+        cargarDatos();
+        setNuevoProducto({ nombre: "", precio: "" });
       } else {
-        alert("Por favor, complete todos loscampos.");
+        alert("Por favor, complete todos los campos.");
       }
     } catch (error) {
       console.error("Error al registrar producto: ", error);
@@ -67,17 +200,16 @@ const Productos = () => {
   };
 
   const actualizarProducto = async () => {
-    try{
-      if(nuevoProducto.nombre && nuevoProducto.precio) {
-    
+    try {
+      if (nuevoProducto.nombre && nuevoProducto.precio) {
         await updateDoc(doc(db, "productos", productoId), {
           nombre: nuevoProducto.nombre,
           precio: parseFloat(nuevoProducto.precio),
         });
-        setNuevoProducto({nombre: "", precio: ""});
-        setModoEdicion(false); 
+        setNuevoProducto({ nombre: "", precio: "" });
+        setModoEdicion(false);
         setProductoId(null);
-        cargarDatos(); //Recargar Lista
+        cargarDatos();
       } else {
         alert("Por favor, complete todos los campos");
       }
@@ -92,133 +224,115 @@ const Productos = () => {
       precio: producto.precio.toString(),
     });
     setProductoId(producto.id);
-    setModoEdicion(true)
+    setModoEdicion(true);
   };
-  
+
+  // Prueba de consulta básica (2 ciudades más pobladas de Guatemala)
   const pruebaConsulta1 = async () => {
     try {
-      console.log('Entrando a pruebaConsulta1');
       const q = query(
-        collection(db, "ciudades"), // Esta ya estaba bien (minúscula)
+        collection(db, "ciudades"),
         where("pais", "==", "Guatemala"),
         orderBy("poblacion", "desc"),
         limit(2)
       );
       const snapshot = await getDocs(q);
-      console.log('pruebaConsulta1 snapshot size:', snapshot.size);
-      console.log("---------Consulta1--------------")
       snapshot.forEach((doc) => {
         const data = doc.data();
-        console.log(`ID: ${doc.id}, Nombre: ${data.nombre}`)
-      })
+        console.log(`ID: ${doc.id}, Nombre: ${data.nombre}`);
+      });
+    } catch (error) {
+      console.error("Error en pruebaConsulta1:", error);
     }
-    catch (error) {
-      console.error('Error en pruebaConsulta1:', error);
+  };
+
+  // Consultas complejas
+  const ejecutarConsultasSolicitadas = async () => {
+    try {
+      const q1 = query(
+        collection(db, "ciudades"),
+        where("pais", "==", "Guatemala"),
+        orderBy("poblacion", "desc"),
+        limit(2)
+      );
+      const s1 = await getDocs(q1);
+      s1.forEach((d) => console.log(d.id, d.data()));
+
+      const q2 = query(
+        collection(db, "ciudades"),
+        where("pais", "==", "Honduras"),
+        where("poblacion", ">", 700000)
+      );
+      const s2 = await getDocs(q2);
+      const arr2 = s2.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr2.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      arr2.slice(0, 3).forEach((d) => console.log(d.id, d));
+
+      const paisesCA = [
+        "Guatemala",
+        "Honduras",
+        "El Salvador",
+        "Nicaragua",
+        "Costa Rica",
+        "Panama",
+        "Belize",
+      ];
+      const q4 = query(
+        collection(db, "ciudades"),
+        where("poblacion", "<=", 300000),
+        where("pais", "in", paisesCA)
+      );
+      const s4 = await getDocs(q4);
+      const arr4 = s4.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr4.sort((a, b) => b.pais.localeCompare(a.pais));
+      arr4.slice(0, 4).forEach((d) => console.log(d.id, d));
+
+      const q5 = query(
+        collection(db, "ciudades"),
+        where("poblacion", ">", 900000)
+      );
+      const s5 = await getDocs(q5);
+      const arr5 = s5.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr5.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      arr5.slice(0, 3).forEach((d) => console.log(d.id, d));
+
+      const q6 = query(
+        collection(db, "ciudades"),
+        where("pais", "==", "Guatemala"),
+        orderBy("poblacion", "desc"),
+        limit(5)
+      );
+      const s6 = await getDocs(q6);
+      s6.forEach((d) => console.log(d.id, d.data()));
+
+      const q7 = query(
+        collection(db, "ciudades"),
+        where("poblacion", ">=", 200000),
+        where("poblacion", "<=", 600000)
+      );
+      const s7 = await getDocs(q7);
+      const arr7 = s7.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr7.sort((a, b) => a.pais.localeCompare(b.pais));
+      arr7.slice(0, 5).forEach((d) => console.log(d.id, d));
+
+      const s8 = await getDocs(collection(db, "ciudades"));
+      const arr8 = s8.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr8.sort((a, b) => {
+        const regA = a.region || a.pais || "";
+        const regB = b.region || b.pais || "";
+        if (regA !== regB) return regB.localeCompare(regA);
+        return (b.poblacion || 0) - (a.poblacion || 0);
+      });
+      arr8.slice(0, 5).forEach((d) => console.log(d.id, d));
+    } catch (error) {
+      console.error("Error ejecutando consultas:", error);
     }
-  }
+  };
 
   useEffect(() => {
-    console.log('useEffect Productos montado - ejecutando cargarDatos y pruebaConsulta1');
     cargarDatos();
     pruebaConsulta1();
   }, []);
-
-  const ejecutarConsultasSolicitadas = async () => {
-    try {
-      // 1) Las 2 ciudades más pobladas de Guatemala (población desc, limit 2)
-      console.log('--- 1) Top 2 ciudades Guatemala (población desc) ---');
-      try {
-        const q1 = query(collection(db, 'ciudades'), where('pais', '==', 'Guatemala'), orderBy('poblacion', 'desc'), limit(2));
-        const s1 = await getDocs(q1);
-        s1.forEach(d => console.log(d.id, d.data()));
-      } catch (err) {
-        console.error('Error consulta 1:', err);
-      }
-
-      // 2) Ciudades de Honduras con población > 700k, ordenadas por nombre asc, limit 3
-      console.log('--- 2) Honduras población >700k, ordenar por nombre asc, limit 3 ---');
-      try {
-        const q2 = query(collection(db, 'ciudades'), where('pais', '==', 'Honduras'), where('poblacion', '>', 700000));
-        const s2 = await getDocs(q2);
-        const arr2 = [];
-        s2.forEach(d => arr2.push({ id: d.id, ...d.data() }));
-        arr2.sort((a,b) => a.nombre.localeCompare(b.nombre));
-        arr2.slice(0,3).forEach(d => console.log(d.id, d));
-      } catch (err) {
-        console.error('Error consulta 2:', err);
-      }
-
-      // 4) Ciudades centroamericanas con población <= 300k, ordenadas por país desc, limit 4
-      console.log('--- 4) Ciudades centroamericanas <=300k, ordenar por país desc, limit 4 ---');
-      try {
-        const paisesCA = ['Guatemala','Honduras','El Salvador','Nicaragua','Costa Rica','Panama','Belize'];
-        const q4 = query(collection(db, 'ciudades'), where('poblacion', '<=', 300000), where('pais', 'in', paisesCA));
-        const s4 = await getDocs(q4);
-        const arr4 = [];
-        s4.forEach(d => arr4.push({ id: d.id, ...d.data() }));
-        arr4.sort((a,b) => b.pais.localeCompare(a.pais)); // país desc
-        arr4.slice(0,4).forEach(d => console.log(d.id, d));
-      } catch (err) {
-        console.error('Error consulta 4:', err);
-      }
-
-      // 5) 3 ciudades con población > 900k, ordenadas por nombre
-      console.log('--- 5) 3 ciudades con población >900k ordenadas por nombre ---');
-      try {
-        const q5 = query(collection(db, 'ciudades'), where('poblacion', '>', 900000));
-        const s5 = await getDocs(q5);
-        const arr5 = [];
-        s5.forEach(d => arr5.push({ id: d.id, ...d.data() }));
-        arr5.sort((a,b) => a.nombre.localeCompare(b.nombre));
-        arr5.slice(0,3).forEach(d => console.log(d.id, d));
-      } catch (err) {
-        console.error('Error consulta 5:', err);
-      }
-
-      // 6) Lista ciudades guatemaltecas ordenadas por población desc, limit(5) por seguridad
-      console.log('--- 6) Ciudades Guatemala (población desc) limit 5 ---');
-      try {
-        const q6 = query(collection(db, 'ciudades'), where('pais', '==', 'Guatemala'), orderBy('poblacion', 'desc'), limit(5));
-        const s6 = await getDocs(q6);
-        s6.forEach(d => console.log(d.id, d.data()));
-      } catch (err) {
-        console.error('Error consulta 6:', err);
-      }
-
-      // 7) Ciudades con población entre 200k y 600k, ordenadas por país asc, limit 5
-      console.log('--- 7) Ciudades 200k-600k ordenadas por país asc limit 5 ---');
-      try {
-        const q7 = query(collection(db, 'ciudades'), where('poblacion', '>=', 200000), where('poblacion', '<=', 600000));
-        const s7 = await getDocs(q7);
-        const arr7 = [];
-        s7.forEach(d => arr7.push({ id: d.id, ...d.data() }));
-        arr7.sort((a,b) => a.pais.localeCompare(b.pais));
-        arr7.slice(0,5).forEach(d => console.log(d.id, d));
-      } catch (err) {
-        console.error('Error consulta 7:', err);
-      }
-
-      // 8) Top 5 ciudades con mayor población en general, ordenadas por región desc luego por población desc
-      console.log('--- 8) Top 5 por población, orden por región desc (si existe) ---');
-      try {
-        const q8 = query(collection(db, 'ciudades'));
-        const s8 = await getDocs(q8);
-        const arr8 = [];
-        s8.forEach(d => arr8.push({ id: d.id, ...d.data() }));
-        arr8.sort((a,b) => {
-          const regA = a.region || a.pais || '';
-          const regB = b.region || b.pais || '';
-          if (regA !== regB) return regB.localeCompare(regA);
-          return (b.poblacion || 0) - (a.poblacion || 0);
-        });
-        arr8.slice(0,5).forEach(d => console.log(d.id, d));
-      } catch (err) {
-        console.error('Error consulta 8:', err);
-      }
-    } catch (error) {
-      console.error('Error ejecutando consultas solicitadas:', error);
-    }
-  }
 
   useEffect(() => {
     ejecutarConsultasSolicitadas();
@@ -232,9 +346,66 @@ const Productos = () => {
         guardarProducto={guardarProducto}
         actualizarProducto={actualizarProducto}
         modoEdicion={modoEdicion}
+      />
+
+      <View style={{ marginVertical: 5, marginTop: 15 }}>
+        <Button
+          title="Exportar Productos "
+          onPress={() => exportarColeccionIndividual("productos")}
         />
-      <TablaProductos 
-        productos={productos} 
+      </View>
+      <View style={{ marginVertical: 5 }}>
+        <Button
+          title="Exportar Usuarios "
+          onPress={() => exportarColeccionIndividual("usuarios")}
+        />
+      </View>
+      <View style={{ marginVertical: 5 }}>
+        <Button
+          title="Exportar Edades "
+          onPress={() => exportarColeccionIndividual("edades")}
+        />
+      </View>
+      <View style={{ marginVertical: 5 }}>
+        <Button
+          title="Exportar Ciudades "
+          onPress={() => exportarColeccionIndividual("ciudades")}
+        />
+      </View>
+
+      <View
+        style={{
+          marginVertical: 10,
+          marginTop: 15,
+          borderTopWidth: 1,
+          borderColor: "#ccc",
+          paddingTop: 10,
+        }}
+      >
+        <Button
+          title="Exportar Todas las Colecciones "
+          onPress={exportarTodasColecciones}
+        />
+      </View>
+
+      <View
+        style={{
+          marginVertical: 10,
+          marginTop: 10,
+          borderColor: "green",
+          borderWidth: 1,
+          paddingTop: 5,
+        }}
+      >
+        <Button
+          title="Generar Excel de Productos "
+          onPress={() => generarExcelProductos(productos)}
+          color="#28a745"
+        />
+      </View>
+
+      <TablaProductos
+        productos={productos}
         eliminarProducto={eliminarProducto}
         editarProducto={editarProducto}
         cargarDatos={cargarDatos}
@@ -248,3 +419,4 @@ const styles = StyleSheet.create({
 });
 
 export default Productos;
+
