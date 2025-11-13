@@ -1,42 +1,78 @@
-import React, { useEffect, useState } from "react"; // Importar hooks de estado y efecto [cite: 45]
-import { onAuthStateChanged, signOut } from "firebase/auth"; // Importar métodos de autenticación [cite: 45]
-import { View } from "react-native"; // Importar View para el contenedor [cite: 45]
+import React, { useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { View, Button, StyleSheet } from "react-native"; // Importamos Button y StyleSheet
 
-// Importar el objeto de autenticación de Firebase (ajusta la ruta si es necesario// App.js
-// ...
-import { auth } from "./src/database/firebaseconfig"; // Entra directamente a 'src' 
+import { auth } from "./src/database/firebaseconfig";
 
-// Importar vistas
-import Login from "./view/Login.js"; // Se asume esta ruta para Login.js
-import Productos from "./view/productos.js"; // Ruta de Productos
+// --- Importar TODAS las vistas ---
+import Login from "./view/Login.js";
+import Productos from "./view/productos.js";
+import ProductosRealtime from "./view/ProductosRealtime.jsx";
+import CalculadoraIMC from "./view/CalculadoraIMC.jsx";
 
 export default function App() {
-  const [usuario, setUsuario] = useState(null); // Estado para almacenar el usuario autenticado [cite: 45]
+  const [usuario, setUsuario] = useState(null);
+  
+  // Este estado controlará qué vista mostramos DESPUÉS del login
+  const [vistaActual, setVistaActual] = useState('productos');
 
   useEffect(() => {
-    // Escucha los cambios en la autenticación (login/logout) [cite: 45]
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUsuario(user); // [cite: 45]
+      setUsuario(user);
+      // Si el usuario inicia sesión, lo mandamos a la vista principal 'productos'
+      if (user) {
+        setVistaActual('productos');
+      }
     });
-    return unsubscribe; // Retorna la función para desuscribirse [cite: 45]
-  }, []); // El array de dependencia vacío asegura que se ejecute una sola vez
+    return unsubscribe;
+  }, []);
 
-  // Función para cerrar sesión
   const cerrarSesion = async () => {
     await signOut(auth);
   };
 
+  // --- LÓGICA DE LOGIN (Sin cambios) ---
   if (!usuario) {
-    // Si no hay usuario autenticado, mostrar login [cite: 45]
-    // Se pasa onLoginSuccess para actualizar el estado 'usuario' tras un login exitoso.
     return <Login onLoginSuccess={() => setUsuario(auth.currentUser)} />;
   }
 
-  // Si sí hay usuario autenticado, mostrar productos
+  // --- LÓGICA DE VISTAS (MODIFICADA) ---
+  // Si hay usuario, mostramos el menú y la vista seleccionada
   return (
     <View style={{ flex: 1 }}>
-      {/* Pasar el método cerrarSesion a la vista Productos [cite: 45] */}
-      <Productos cerrarSesion={cerrarSesion} />
+      {/* 1. Menú de navegación en la parte superior */}
+      <View style={styles.menuNavegacion}>
+        <Button title="Productos" onPress={() => setVistaActual('productos')} />
+        <Button title="Guía RT" onPress={() => setVistaActual('realtime')} />
+        <Button title="Tarea IMC" onPress={() => setVistaActual('imc')} />
+        <Button title="Salir" onPress={cerrarSesion} color="#d9534f" />
+      </View>
+
+      {/* 2. Contenedor principal que renderiza la vista actual */}
+      <View style={styles.containerPrincipal}>
+        {vistaActual === 'productos' && <Productos />}
+        {vistaActual === 'realtime' && <ProductosRealtime />}
+        {vistaActual === 'imc' && <CalculadoraIMC />}
+      </View>
     </View>
   );
 }
+
+// --- ESTILOS CORREGIDOS ---
+const styles = StyleSheet.create({
+  containerPrincipal: {
+    flex: 1,
+  },
+  menuNavegacion: {
+    // --- Estilos del menú ---
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#f9f9f9',
+
+    // Ajustamos los paddings para la parte superior
+    paddingTop: 40, // Más espacio para la barra de estado
+    paddingBottom: 10
+  }
+});

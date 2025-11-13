@@ -83,9 +83,9 @@ const exportarTodasColecciones = async () => {
   }
 };
 
-// --- CÓDIGO DE LA GUÍA (GENERAR EXCEL) ---
+// --- CÓDIGO excel
 
-// Función de ayuda para convertir ArrayBuffer a base64
+// Función 
 const arrayBufferToBase64 = (buffer) => {
   let binary = "";
   const bytes = new Uint8Array(buffer);
@@ -96,7 +96,7 @@ const arrayBufferToBase64 = (buffer) => {
   return btoa(binary);
 };
 
-// --- ¡NUEVA FUNCIÓN PARA PRODUCTOS! ---
+// FUNCIÓN PARA PRODUCTOS
 const generarExcelProductos = async (productos) => {
   try {
     if (!productos || productos.length === 0) {
